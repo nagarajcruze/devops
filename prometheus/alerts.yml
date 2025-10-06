@@ -1,0 +1,63 @@
+groups:
+  - name: node-and-container-alerts
+    interval: 1m
+    rules:
+      # -------------------------
+      # Node CPU Usage
+      # -------------------------
+      - alert: node_cpu_high
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage has been above 90% for more than 2 minutes."
+
+      # -------------------------
+      # Node Memory Usage
+      # -------------------------
+      - alert: node_memory_low
+        expr: 100 * (1 - ((node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes)) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage has exceeded 90% on instance {{ $labels.instance }}."
+
+      # -------------------------
+      # Node Disk Usage
+      # -------------------------
+      - alert: node_disk_high
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is above 90% on instance {{ $labels.instance }} (mountpoint {{ $labels.mountpoint }})."
+
+      # -------------------------
+      # Node Down
+      # -------------------------
+      - alert: node_down
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node is down: {{ $labels.instance }}"
+          description: "Instance {{ $labels.instance }} is unreachable for more than 1 minute."
+
+      # -------------------------
+      # Container Down
+      # -------------------------
+      - alert: container_down
+        expr: time() - last_over_time(container_last_seen{image!=""}[5m]) > 60
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container is down: {{ $labels.name }}"
+          description: "Container {{ $labels.name }} (image: {{ $labels.image }}) on host {{ $labels.instance }} has stopped for more than 1 minute."

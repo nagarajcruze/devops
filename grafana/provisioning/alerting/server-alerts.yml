@@ -1,0 +1,192 @@
+apiVersion: 1
+groups:
+  - name: server-alerts
+    interval: 1m
+    #for: 10m
+    folder: server-alert-rules
+    rules:
+      # -------------------------
+      # Node CPU Usage
+      # -------------------------
+      - uid: node_cpu_high
+        title: "High CPU Usage"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: dezlweh4rv3swe
+            queryType: timeSeriesQuery
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              legendFormat: "{{instance}}"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              type: reduce
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [80]
+                  operator: and
+                  reducer: last
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+
+      # -------------------------
+      # Node Memory Usage
+      # -------------------------
+      - uid: node_memory_low
+        title: "Low Memory Available"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: dezlweh4rv3swe
+            queryType: timeSeriesQuery
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: (node_memory_Active_bytes / node_memory_MemTotal_bytes) * 100
+              legendFormat: "{{instance}}"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              type: reduce
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+                  operator: and
+                  reducer: last
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+
+      # -------------------------
+      # Node Disk Usage
+      # -------------------------
+      - uid: node_disk_high
+        title: "High Disk Usage"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: dezlweh4rv3swe
+            queryType: timeSeriesQuery
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) * 100
+              legendFormat: "{{instance}} - {{mountpoint}}"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              type: reduce
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [85]
+                  operator: and
+                  reducer: last
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+
+      # -------------------------
+      # Node Down
+      # -------------------------
+      - uid: node_down
+        title: "Node Down"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: dezlweh4rv3swe
+            queryType: timeSeriesQuery
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: up == 0
+              legendFormat: "{{instance}}"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              type: reduce
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: ne
+                    params: [1]
+                  operator: and
+                  reducer: last
+                  type: query
+        noDataState: NoData
+        execErrState: Error
+
+
+      # -------------------------
+      # Container Down
+      # -------------------------
+      - uid: container_down
+        title: "Container Down"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: dezlweh4rv3swe
+            queryType: timeSeriesQuery
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: time() - last_over_time(container_last_seen{image!=""}[1h]) > 60
+              legendFormat: "{{instance}} - {{container_name}}"
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              type: reduce
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              expression: B
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator: and
+                  reducer: last
+                  type: query
+        noDataState: NoData
+        execErrState: Error
